@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using AutomataSimulator.ViewModels;
 using AutomataSimulator.Core.Models.Automata;
@@ -10,28 +11,37 @@ namespace AutomataSimulator.WPF;
 
 public partial class MainWindow : Window
 {
+    private MainViewModel _vm;
+    // Словарь для быстрого поиска визуального узла по имени состояния (чтобы его подсвечивать)
+    private Dictionary<string, VisualVertex> _visualNodes = new();
+
     public MainWindow()
     {
         InitializeComponent();
 
-        var vm = new MainViewModel();
-        DataContext = vm;
+        _vm = new MainViewModel();
+        DataContext = _vm;
 
-        vm.PropertyChanged += (s, e) =>
+        // 1. Слушаем создание нового автомата
+        _vm.PropertyChanged += (s, e) =>
         {
             if (e.PropertyName == nameof(MainViewModel.CurrentAutomaton))
             {
-                Dispatcher.Invoke(() => BuildVisualGraph(vm.CurrentAutomaton));
+                Dispatcher.Invoke(() => BuildVisualGraph(_vm.CurrentAutomaton));
             }
         };
+
+        // 2. Слушаем шаги симуляции (чтобы двигать подсветку)
+        // Предполагаем, что у Engine или Simulation есть способ узнать текущие активные состояния.
+        // Пока привяжемся к кликам по кнопке (временно, чтобы проверить работоспособность).
     }
 
     private void BuildVisualGraph(object? automaton)
     {
         if (automaton == null) return;
 
-        // Используем object и IEdge<object> для 100% совместимости
         var visualGraph = new BidirectionalGraph<object, IEdge<object>>();
+        _visualNodes.Clear(); // Очищаем старые узлы
 
         if (automaton is FiniteAutomaton fa)
         {
@@ -40,12 +50,15 @@ public partial class MainWindow : Window
                 s => new VisualVertex { Name = s.Name, IsStart = s.IsStart, IsFinal = s.IsFinal }
             );
 
-            foreach (var v in vertexMap.Values) visualGraph.AddVertex(v);
+            foreach (var v in vertexMap.Values)
+            {
+                visualGraph.AddVertex(v);
+                _visualNodes[v.Name] = v; // Сохраняем для анимации
+            }
 
             foreach (var t in fa.Transitions.Cast<FiniteTransition>())
             {
-                var edge = new VisualEdge(vertexMap[t.FromStateId], vertexMap[t.ToStateId], t.Symbol?.ToString() ?? "ε");
-                visualGraph.AddEdge(edge);
+                visualGraph.AddEdge(new VisualEdge(vertexMap[t.FromStateId], vertexMap[t.ToStateId], t.Symbol?.ToString() ?? "ε"));
             }
         }
         else if (automaton is PushdownAutomaton pda)
@@ -55,7 +68,11 @@ public partial class MainWindow : Window
                 s => new VisualVertex { Name = s.Name, IsStart = s.IsStart, IsFinal = s.IsFinal }
             );
 
-            foreach (var v in vertexMap.Values) visualGraph.AddVertex(v);
+            foreach (var v in vertexMap.Values)
+            {
+                visualGraph.AddVertex(v);
+                _visualNodes[v.Name] = v;
+            }
 
             foreach (var t in pda.Transitions.Cast<PushdownTransition>())
             {
@@ -64,6 +81,24 @@ public partial class MainWindow : Window
             }
         }
 
+        // Загружаем граф в интерфейс
         GraphLayout.Graph = visualGraph;
+
+        // ИСПРАВЛЕНИЕ СЛИПАНИЯ УЗЛОВ:
+        // Заставляем WPF обновить размеры элементов, а затем запускаем алгоритм расталкивания
+        GraphLayout.UpdateLayout();
+        GraphLayout.Relayout();
+
+        // Подсвечиваем стартовое состояние по умолчанию
+        ResetHighlighting();
+    }
+
+    // Метод для очистки всех подсветок и установки старта
+    private void ResetHighlighting()
+    {
+        foreach (var node in _visualNodes.Values)
+        {
+            node.IsActive = node.IsStart;
+        }
     }
 }

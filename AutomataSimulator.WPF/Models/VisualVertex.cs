@@ -1,11 +1,31 @@
-﻿namespace AutomataSimulator.WPF.Models;
+﻿using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
-public class VisualVertex
+namespace AutomataSimulator.WPF.Models;
+
+public class VisualVertex : INotifyPropertyChanged
 {
+    private bool _isActive;
+
     public string Name { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
     public bool IsStart { get; set; }
     public bool IsFinal { get; set; }
+
+    public bool IsActive
+    {
+        get => _isActive;
+        set
+        {
+            _isActive = value;
+            OnPropertyChanged(); // Уведомляем WPF об изменении
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
 
     public override string ToString() => Name;
 }
