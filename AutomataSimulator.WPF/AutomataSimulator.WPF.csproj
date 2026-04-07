@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GraphShape" Version="1.2.1" />
+    <PackageReference Include="GraphShape.Controls" Version="1.2.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AutomataSimulator.Core\AutomataSimulator.Core.csproj" />
+    <ProjectReference Include="..\AutomataSimulator.Engine\AutomataSimulator.Engine.csproj" />
+    <ProjectReference Include="..\AutomataSimulator.Translators\AutomataSimulator.Translators.csproj" />
+    <ProjectReference Include="..\AutomataSimulator.ViewModels\AutomataSimulator.ViewModels.csproj" />
+  </ItemGroup>
+
+</Project>
