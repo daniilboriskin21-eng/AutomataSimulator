@@ -54,4 +54,11 @@ public class SimulationViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(IsActive));
     }
+    public List<Guid> GetActiveStateIds()
+    {
+        // _engine теперь "знает" про этот метод благодаря обновлению интерфейса
+        return _engine?.GetActiveStateIds().ToList() ?? new List<Guid>();
+    }
+
+
 }

@@ -11,4 +11,7 @@ public class VisualEdge : Edge<object>
     {
         Label = label;
     }
+
+    // Добавляем эту строку:
+    public override string ToString() => Label;
 }

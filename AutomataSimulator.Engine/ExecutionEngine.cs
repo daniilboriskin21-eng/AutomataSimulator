@@ -13,12 +13,14 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
     where TAutomaton : Automaton<TTransition>
     where TTransition : Transition
 {
+    private HashSet<Guid> _activeStateIds = new();
     private readonly TAutomaton _automaton;
     private readonly ITransitionStrategy _strategy; // Поле теперь существует
     private readonly string _fullInput;
     private readonly List<Breakpoint> _breakpoints = new();
     private readonly Stack<ExecutionState> _history = new();
 
+    public IEnumerable<Guid> GetActiveStateIds() => _activeStateIds;
     public ExecutionState CurrentState { get; private set; }
     public bool CanStepForward => !CurrentState.IsTerminal || HasAvailableEpsilonTransitions();
     public bool CanStepBackward => _history.Count > 0;

@@ -11,4 +11,9 @@ public interface IExecutionEngine
     void StepForward();
     void StepBackward();
     void Reset();
+
+    /// <summary>
+    /// Возвращает список ID всех состояний, в которых сейчас находится автомат.
+    /// </summary>
+    IEnumerable<Guid> GetActiveStateIds();
 }

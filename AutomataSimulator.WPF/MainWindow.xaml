@@ -3,21 +3,24 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:graph="clr-namespace:GraphShape.Controls;assembly=GraphShape.Controls"
         xmlns:models="clr-namespace:AutomataSimulator.WPF.Models"
-        Title="Automata Simulator" Height="700" Width="1200">
+        Title="Automata Simulator" Height="750" Width="1200"
+        WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
         <DataTemplate DataType="{x:Type models:VisualVertex}">
-            <Grid>
-                <Ellipse Width="45" Height="45" Stroke="Black" StrokeThickness="2">
+            <Grid Width="45" Height="45">
+                <Ellipse StrokeThickness="2">
                     <Ellipse.Style>
                         <Style TargetType="Ellipse">
                             <Setter Property="Fill" Value="White"/>
+                            <Setter Property="Stroke" Value="Black"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                    <Setter Property="Fill" Value="#FFEB3B"/>
+                                    <Setter Property="Fill" Value="#FFD700"/>
+                                    <Setter Property="StrokeThickness" Value="4"/>
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding IsFinal}" Value="True">
-                                    <Setter Property="Stroke" Value="Red"/>
+                                    <Setter Property="Stroke" Value="#E74C3C"/>
                                     <Setter Property="StrokeThickness" Value="3"/>
                                 </DataTrigger>
                             </Style.Triggers>
@@ -28,41 +31,43 @@
             </Grid>
         </DataTemplate>
 
-        <DataTemplate DataType="{x:Type models:VisualEdge}">
-            <TextBlock Text="{Binding Label}" Foreground="Blue" FontWeight="Bold" Background="White"/>
-        </DataTemplate>
+        <Style TargetType="{x:Type graph:EdgeControl}">
+            <Setter Property="ToolTip" Value="{Binding Label}"/>
+            <Setter Property="StrokeThickness" Value="2"/>
+        </Style>
     </Window.Resources>
 
-    <Grid Background="#F5F6F7">
+    <Grid Background="#ECF0F1">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="320"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="250"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Column="0" Background="White" Margin="10" CornerRadius="10" Padding="15">
+        <Border Grid.Column="0" Background="White" Margin="10" CornerRadius="12" Padding="15">
             <StackPanel>
-                <TextBlock Text="Конструктор" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
-                <TextBox Text="{Binding SourceText, UpdateSourceTrigger=PropertyChanged}" Height="80" AcceptsReturn="True"/>
-                <Button Content="Regex -> NFA" Command="{Binding TranslateRegexCommand}" Height="35" Margin="0,10,0,5"/>
-                <Button Content="Grammar -> PDA" Command="{Binding TranslateGrammarCommand}" Height="35"/>
+                <TextBlock Text="Конструктор" FontSize="20" FontWeight="Bold" Margin="0,0,0,15"/>
+                <TextBox Text="{Binding SourceText, UpdateSourceTrigger=PropertyChanged}" Height="100" AcceptsReturn="True" Margin="0,5,0,10" Padding="5"/>
+                <Button Content="Regex -> NFA" Command="{Binding TranslateRegexCommand}" Height="40" Margin="0,0,0,5" Background="#3498DB" Foreground="White" BorderThickness="0"/>
+                <Button Content="Grammar -> PDA" Command="{Binding TranslateGrammarCommand}" Height="40" Background="#3498DB" Foreground="White" BorderThickness="0"/>
                 <Separator Margin="0,20"/>
-                <TextBlock Text="Тест:"/>
-                <TextBox Text="{Binding TestInput, UpdateSourceTrigger=PropertyChanged}" FontSize="16"/>
+                <TextBlock Text="Входная строка:"/>
+                <TextBox Text="{Binding TestInput, UpdateSourceTrigger=PropertyChanged}" FontSize="20" FontWeight="Bold" Padding="5"/>
             </StackPanel>
         </Border>
 
-        <Border Grid.Column="1" Background="White" Margin="0,10" CornerRadius="10">
-            <graph:GraphLayout x:Name="GraphLayout" 
-                               LayoutAlgorithmType="FR" 
-                               OverlapRemovalAlgorithmType="FSA" />
+        <Border Grid.Column="1" Background="White" Margin="0,10" CornerRadius="12" ClipToBounds="True">
+            <graph:GraphLayout x:Name="GraphLayout" LayoutAlgorithmType="KK" OverlapRemovalAlgorithmType="FSA" />
         </Border>
 
-        <Border Grid.Column="2" Background="White" Margin="10" CornerRadius="10" Padding="15">
+        <Border Grid.Column="2" Background="White" Margin="10" CornerRadius="12" Padding="15">
             <StackPanel DataContext="{Binding Simulation}">
-                <Button Content="Шаг Вперед" Command="{Binding StepForwardCommand}" Height="45"/>
-                <Button Content="Сброс" Command="{Binding ResetCommand}" Margin="0,5"/>
-                <ListBox ItemsSource="{Binding StackView}" Height="250" Margin="0,20,0,0"/>
+                <TextBlock Text="Симуляция" FontSize="18" FontWeight="Bold" Margin="0,0,0,15"/>
+                <Button Content="ШАГ ВПЕРЕД" Click="StepForward_Click" Height="60" Background="#2ECC71" Foreground="White" FontWeight="Bold" FontSize="16" BorderThickness="0"/>
+                <Button Content="Сброс" Click="Reset_Click" Margin="0,10" Height="30"/>
+
+                <TextBlock Text="Магазин (Стек):" Margin="0,10,0,5" FontWeight="Bold"/>
+                <ListBox ItemsSource="{Binding StackView}" Height="350" Background="#F8F9F9" BorderThickness="0"/>
             </StackPanel>
         </Border>
     </Grid>

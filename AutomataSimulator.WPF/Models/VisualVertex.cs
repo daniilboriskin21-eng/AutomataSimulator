@@ -6,7 +6,6 @@ namespace AutomataSimulator.WPF.Models;
 public class VisualVertex : INotifyPropertyChanged
 {
     private bool _isActive;
-
     public string Name { get; set; } = string.Empty;
     public bool IsStart { get; set; }
     public bool IsFinal { get; set; }
@@ -16,8 +15,11 @@ public class VisualVertex : INotifyPropertyChanged
         get => _isActive;
         set
         {
-            _isActive = value;
-            OnPropertyChanged(); // Уведомляем WPF об изменении
+            if (_isActive != value)
+            {
+                _isActive = value;
+                OnPropertyChanged();
+            }
         }
     }
 
