@@ -54,6 +54,16 @@ public class SimulationViewModel : ViewModelBase
             _engine?.Reset();
             UpdateUI(); // Это вернет прогресс-бар на 0 и сбросит граф
         });
+
+        ToggleBreakpointCommand = new RelayCommand(param => {
+            if (param is Guid stateId) _engine?.ToggleBreakpoint(stateId);
+        });
+
+        RunCommand = new RelayCommand(_ => {
+            _engine?.Run();
+            UpdateUI();
+        }, _ => _engine?.CanStepForward ?? false);
+
     }
 
     // --- ИЗМЕНЕН МЕТОД: Теперь принимает строку ---
@@ -97,4 +107,9 @@ public class SimulationViewModel : ViewModelBase
     {
         return _engine?.GetActiveStateIds().ToList() ?? new List<Guid>();
     }
+
+    public ICommand ToggleBreakpointCommand { get; }
+    public ICommand RunCommand { get; }
+
+    // В конструкторе:
 }

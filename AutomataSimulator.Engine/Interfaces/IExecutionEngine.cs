@@ -16,4 +16,7 @@ public interface IExecutionEngine
     /// Возвращает список ID всех состояний, в которых сейчас находится автомат.
     /// </summary>
     IEnumerable<Guid> GetActiveStateIds();
+    void ToggleBreakpoint(Guid stateId);
+
+    void Run();
 }

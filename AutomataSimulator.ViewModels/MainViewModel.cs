@@ -30,11 +30,19 @@ public class MainViewModel : ViewModelBase
     public object? CurrentAutomaton
     {
         get => _currentAutomaton;
-        private set => SetProperty(ref _currentAutomaton, value);
+        private set
+        {
+            if (SetProperty(ref _currentAutomaton, value))
+            {
+                // Обновляем состояние кнопки при смене автомата
+                ConvertToDfaCommand?.RaiseCanExecuteChanged();
+            }
+        }
     }
-
     public RelayCommand TranslateRegexCommand { get; }
     public RelayCommand TranslateGrammarCommand { get; }
+
+    public RelayCommand ConvertToDfaCommand { get; }
 
     public MainViewModel()
     {
@@ -72,5 +80,18 @@ public class MainViewModel : ViewModelBase
             // 3. Передаем в симуляцию (ИСПРАВЛЕНО)
             Simulation.Initialize(engine, TestInput);
         });
+
+        ConvertToDfaCommand = new RelayCommand(_ =>
+        {
+            if (CurrentAutomaton is FiniteAutomaton nfa && !nfa.IsDeterministic())
+            {
+                var dfa = AutomataSimulator.Core.Operations.NfaToDfaConverter.Convert(nfa);
+                CurrentAutomaton = dfa;
+
+                var engine = new ExecutionEngine<FiniteAutomaton, FiniteTransition>(dfa, TestInput);
+                Simulation.Initialize(engine, TestInput);
+            }
+        }, _ => CurrentAutomaton is FiniteAutomaton fa && !fa.IsDeterministic());
+        // Не забудьте вызывать ConvertToDfaCommand.RaiseCanExecuteChanged() при смене CurrentAutomaton
     }
 }

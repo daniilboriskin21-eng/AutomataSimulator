@@ -7,36 +7,83 @@
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
+        <!-- Ваш шаблон вершины -->
         <DataTemplate DataType="{x:Type models:VisualVertex}">
-            <Grid Width="45" Height="45">
-                <Ellipse StrokeThickness="2">
-                    <Ellipse.Style>
-                        <Style TargetType="Ellipse">
-                            <Setter Property="Fill" Value="White"/>
-                            <Setter Property="Stroke" Value="Black"/>
+            <Grid MouseLeftButtonDown="Vertex_MouseLeftButtonDown" Background="Transparent" Tag="{Binding}">
+
+                <!-- 1. СОСТОЯНИЕ: ОБЫЧНЫЙ УЗЕЛ -->
+                <Grid Width="45" Height="45">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Visible"/>
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                    <Setter Property="Fill" Value="#FFD700"/>
-                                    <Setter Property="StrokeThickness" Value="4"/>
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding IsFinal}" Value="True">
-                                    <Setter Property="Stroke" Value="#E74C3C"/>
-                                    <Setter Property="StrokeThickness" Value="3"/>
+                                <DataTrigger Binding="{Binding IsDummy}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </Ellipse.Style>
-                </Ellipse>
-                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+                    </Grid.Style>
+
+                    <Ellipse StrokeThickness="2">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="White"/>
+                                <Setter Property="Stroke" Value="Black"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                        <Setter Property="Fill" Value="#FFD700"/>
+                                        <Setter Property="StrokeThickness" Value="4"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsFinal}" Value="True">
+                                        <Setter Property="Stroke" Value="#E74C3C"/>
+                                        <Setter Property="StrokeThickness" Value="3"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold"/>
+
+                    <Ellipse Width="12" Height="12" Fill="Red" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,-2,0">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsBreakpoint}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                </Grid>
+
+                <!-- 2. СОСТОЯНИЕ: ФИКТИВНЫЙ УЗЕЛ (Для петель и встречных стрелок) -->
+                <!-- Линии будут соединяться ровно с границами этого бордера -->
+                <Border Background="#FDFEFE" BorderBrush="#BDC3C7" BorderThickness="1" CornerRadius="4" Padding="4,2">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDummy}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Text="{Binding Name}" Foreground="#2980B9" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+
             </Grid>
         </DataTemplate>
 
         <Style TargetType="{x:Type graph:EdgeControl}">
             <Setter Property="ToolTip" Value="{Binding Label}"/>
             <Setter Property="StrokeThickness" Value="4"/>
+            <Setter Property="Foreground" Value="#7F8C8D"/>
         </Style>
     </Window.Resources>
-
+    
     <Grid Background="#ECF0F1">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="320"/>
@@ -49,6 +96,7 @@
                 <TextBlock Text="Конструктор" FontSize="20" FontWeight="Bold" Margin="0,0,0,15"/>
                 <TextBox Text="{Binding SourceText, UpdateSourceTrigger=PropertyChanged}" Height="100" AcceptsReturn="True" Margin="0,5,0,10" Padding="5"/>
                 <Button Content="Regex -> NFA" Command="{Binding TranslateRegexCommand}" Height="40" Margin="0,0,0,5" Background="#3498DB" Foreground="White" BorderThickness="0"/>
+                <Button Content="Преобразовать NFA в DFA" Command="{Binding ConvertToDfaCommand}" Height="30" Margin="0,0,0,10" Background="#F39C12" Foreground="White" BorderThickness="0"/>
                 <Button Content="Grammar -> PDA" Command="{Binding TranslateGrammarCommand}" Height="40" Background="#3498DB" Foreground="White" BorderThickness="0"/>
                 <Separator Margin="0,20"/>
                 <TextBlock Text="Входная строка:"/>
@@ -57,7 +105,11 @@
         </Border>
 
         <Border Grid.Column="1" Background="White" Margin="0,10" CornerRadius="12" ClipToBounds="True">
-            <graph:GraphLayout x:Name="GraphLayout" LayoutAlgorithmType="KK" OverlapRemovalAlgorithmType="FSA" />
+
+            <graph:GraphLayout x:Name="GraphLayout" 
+                       LayoutAlgorithmType="KK" 
+                       OverlapRemovalAlgorithmType="FSA"/>
+
         </Border>
 
         <Border Grid.Column="2" Background="White" Margin="10" CornerRadius="12" Padding="15">
@@ -76,6 +128,7 @@
                 <UniformGrid Columns="2" Margin="0,0,0,10">
                     <Button Content="НАЗАД" Click="StepBackward_Click" Height="40" Background="#95A5A6" Foreground="White" FontWeight="Bold" Margin="0,0,2,0" BorderThickness="0"/>
                     <Button Content="ВПЕРЕД" Click="StepForward_Click" Height="40" Background="#2ECC71" Foreground="White" FontWeight="Bold" Margin="2,0,0,0" BorderThickness="0"/>
+                    <Button Content="ЗАПУСК" Command="{Binding RunCommand}" Height="40" Background="#9B59B6" Foreground="White" FontWeight="Bold" Margin="0,0,2,0" BorderThickness="0"/>
                 </UniformGrid>
 
                 <Button Content="СБРОС В НАЧАЛО" Click="Reset_Click" Height="30" Background="#E74C3C" Foreground="White" BorderThickness="0"/>

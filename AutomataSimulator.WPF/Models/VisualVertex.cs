@@ -30,4 +30,14 @@ public class VisualVertex : INotifyPropertyChanged
     }
 
     public override string ToString() => Name;
+
+    private bool _isBreakpoint;
+    public bool IsBreakpoint
+    {
+        get => _isBreakpoint;
+        set { if (_isBreakpoint != value) { _isBreakpoint = value; OnPropertyChanged(); } }
+    }
+    public Guid Id { get; set; } // Добавьте это, чтобы легко связывать визуал с ядром
+
+    public bool IsDummy { get; set; }
 }

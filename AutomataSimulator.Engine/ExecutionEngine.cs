@@ -135,4 +135,25 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
         var closed = _strategy.ApplyEpsilonClosure(CurrentState, _automaton.Transitions.Cast<ITransition>());
         return !closed.ActiveStateIds.SetEquals(CurrentState.ActiveStateIds);
     }
+
+    public void ToggleBreakpoint(Guid stateId)
+    {
+        var existing = _breakpoints.FirstOrDefault(b => b.StateId == stateId);
+        if (existing != null) _breakpoints.Remove(existing);
+        else _breakpoints.Add(new Breakpoint { StateId = stateId });
+    }
+
+    public void Run()
+    {
+        while (CanStepForward)
+        {
+            StepForward();
+
+            // Если после шага мы оказались в состоянии с включенным брейкпоинтом - останавливаем цикл Run
+            if (_breakpoints.Any(bp => bp.ShouldStop(CurrentState)))
+            {
+                break;
+            }
+        }
+    }
 }

@@ -47,34 +47,78 @@ public partial class MainWindow : Window
         var visualGraph = new BidirectionalGraph<object, IEdge<object>>();
         _vertexMap.Clear();
 
+        var addedDirectedPairs = new HashSet<(Guid From, Guid To)>();
+
         if (automaton is FiniteAutomaton fa)
         {
             foreach (var s in fa.States)
             {
-                var v = new VisualVertex { Name = s.Name, IsStart = s.IsStart, IsFinal = s.IsFinal };
+                var v = new VisualVertex { Id = s.Id, Name = s.Name, IsStart = s.IsStart, IsFinal = s.IsFinal };
                 _vertexMap[s.Id] = v;
                 visualGraph.AddVertex(v);
             }
 
-            foreach (var t in fa.Transitions.Cast<FiniteTransition>())
+            var groupedTransitions = fa.Transitions
+                .Cast<FiniteTransition>()
+                .GroupBy(t => new { t.FromStateId, t.ToStateId });
+
+            foreach (var group in groupedTransitions)
             {
-                var label = t.Symbol?.ToString() ?? "ε";
-                visualGraph.AddEdge(new VisualEdge(_vertexMap[t.FromStateId], _vertexMap[t.ToStateId], label));
+                var fromId = group.Key.FromStateId;
+                var toId = group.Key.ToStateId;
+                var label = string.Join(", ", group.Select(t => t.Symbol?.ToString() ?? "ε"));
+
+                // Проверяем: это ПЕТЛЯ или ВСТРЕЧНАЯ СТРЕЛКА?
+                if (fromId == toId || addedDirectedPairs.Contains((toId, fromId)))
+                {
+                    // Имя фиктивной вершины - это сам текст перехода!
+                    var dummy = new VisualVertex { Id = Guid.NewGuid(), Name = label, IsDummy = true };
+                    visualGraph.AddVertex(dummy);
+
+                    // Соединяем A -> Плашка -> B (или A -> Плашка -> A для петель)
+                    visualGraph.AddEdge(new VisualEdge(_vertexMap[fromId], dummy, label));
+                    visualGraph.AddEdge(new VisualEdge(dummy, _vertexMap[toId], label));
+                }
+                else
+                {
+                    // Обычная прямая стрелка
+                    visualGraph.AddEdge(new VisualEdge(_vertexMap[fromId], _vertexMap[toId], label));
+                    addedDirectedPairs.Add((fromId, toId));
+                }
             }
         }
+        // Аналогичный код для PushdownAutomaton (скопируйте логику проверки fromId == toId)
         else if (automaton is PushdownAutomaton pda)
         {
             foreach (var s in pda.States)
             {
-                var v = new VisualVertex { Name = s.Name, IsStart = s.IsStart, IsFinal = s.IsFinal };
+                var v = new VisualVertex { Id = s.Id, Name = s.Name, IsStart = s.IsStart, IsFinal = s.IsFinal };
                 _vertexMap[s.Id] = v;
                 visualGraph.AddVertex(v);
             }
 
-            foreach (var t in pda.Transitions.Cast<PushdownTransition>())
+            var groupedTransitions = pda.Transitions
+                .Cast<PushdownTransition>()
+                .GroupBy(t => new { t.FromStateId, t.ToStateId });
+
+            foreach (var group in groupedTransitions)
             {
-                var label = $"{t.InputSymbol ?? 'ε'}, {t.PopSymbol ?? 'ε'} → {t.PushSymbols ?? "ε"}";
-                visualGraph.AddEdge(new VisualEdge(_vertexMap[t.FromStateId], _vertexMap[t.ToStateId], label));
+                var fromId = group.Key.FromStateId;
+                var toId = group.Key.ToStateId;
+                var label = string.Join("\n", group.Select(t => $"{t.InputSymbol ?? 'ε'}, {t.PopSymbol ?? 'ε'} → {t.PushSymbols ?? "ε"}"));
+
+                if (fromId == toId || addedDirectedPairs.Contains((toId, fromId)))
+                {
+                    var dummy = new VisualVertex { Id = Guid.NewGuid(), Name = label, IsDummy = true };
+                    visualGraph.AddVertex(dummy);
+                    visualGraph.AddEdge(new VisualEdge(_vertexMap[fromId], dummy, label));
+                    visualGraph.AddEdge(new VisualEdge(dummy, _vertexMap[toId], label));
+                }
+                else
+                {
+                    visualGraph.AddEdge(new VisualEdge(_vertexMap[fromId], _vertexMap[toId], label));
+                    addedDirectedPairs.Add((fromId, toId));
+                }
             }
         }
 
@@ -88,7 +132,6 @@ public partial class MainWindow : Window
 
         UpdateVisualHighlighting();
     }
-
     private void UpdateVisualHighlighting()
     {
         if (_vm?.Simulation == null) return;
@@ -135,6 +178,17 @@ public partial class MainWindow : Window
         {
             _vm.Simulation.ResetCommand.Execute(null);
             UpdateVisualHighlighting();
+        }
+    }
+
+    private void Vertex_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement fe && fe.Tag is VisualVertex vertex)
+        {
+            vertex.IsBreakpoint = !vertex.IsBreakpoint;
+
+            // Передаем команду во ViewModel или Engine
+            _vm?.Simulation.ToggleBreakpointCommand?.Execute(vertex.Id);
         }
     }
 }
