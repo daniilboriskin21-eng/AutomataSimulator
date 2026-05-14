@@ -191,4 +191,16 @@ public partial class MainWindow : Window
             _vm?.Simulation.ToggleBreakpointCommand?.Execute(vertex.Id);
         }
     }
+
+    private void OpenManualConstructor_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new Windows.ManualConstructorWindow();
+        window.Owner = this; // Привязываем к главному окну
+
+        if (window.ShowDialog() == true && window.ViewModel.ResultAutomaton != null)
+        {
+            // Передаем созданный автомат в главную ViewModel
+            _vm?.LoadManualAutomaton(window.ViewModel.ResultAutomaton);
+        }
+    }
 }

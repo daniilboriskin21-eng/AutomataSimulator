@@ -116,7 +116,12 @@
         <Border Grid.Row="1" Grid.Column="0" Background="White" Margin="10" CornerRadius="12" Padding="15">
             <StackPanel>
                 <TextBlock Text="Конструктор" FontSize="20" FontWeight="Bold" Margin="0,0,0,15"/>
-                <TextBox Text="{Binding SourceText, UpdateSourceTrigger=PropertyChanged}" Height="100" AcceptsReturn="True" Margin="0,5,0,10" Padding="5"/>
+
+                <!-- НОВАЯ КНОПКА -->
+                <Button Content="⚙️ Задать автомат вручную" Click="OpenManualConstructor_Click" Height="40" Margin="0,0,0,15" Background="#8E44AD" Foreground="White" BorderThickness="0" FontWeight="Bold"/>
+
+                <TextBlock Text="Или сгенерировать из текста:"/>
+                <TextBox Text="{Binding SourceText, UpdateSourceTrigger=PropertyChanged}" Height="80" AcceptsReturn="True" Margin="0,5,0,10" Padding="5"/>
                 <Button Content="Regex -> NFA" Command="{Binding TranslateRegexCommand}" Height="40" Margin="0,0,0,5" Background="#3498DB" Foreground="White" BorderThickness="0"/>
                 <Button Content="Преобразовать NFA в DFA" Command="{Binding ConvertToDfaCommand}" Height="30" Margin="0,0,0,10" Background="#F39C12" Foreground="White" BorderThickness="0"/>
                 <Button Content="Grammar -> PDA" Command="{Binding TranslateGrammarCommand}" Height="40" Background="#3498DB" Foreground="White" BorderThickness="0"/>

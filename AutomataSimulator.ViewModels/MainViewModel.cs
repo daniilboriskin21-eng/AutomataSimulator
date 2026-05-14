@@ -153,4 +153,20 @@ public class MainViewModel : ViewModelBase
             }
         });
     }
+
+    public void LoadManualAutomaton(object automaton)
+    {
+        CurrentAutomaton = automaton;
+
+        if (automaton is FiniteAutomaton fa)
+        {
+            var engine = new AutomataSimulator.Engine.ExecutionEngine<FiniteAutomaton, FiniteTransition>(fa, TestInput);
+            Simulation.Initialize(engine, TestInput);
+        }
+        else if (automaton is PushdownAutomaton pda)
+        {
+            var engine = new AutomataSimulator.Engine.ExecutionEngine<PushdownAutomaton, PushdownTransition>(pda, TestInput);
+            Simulation.Initialize(engine, TestInput);
+        }
+    }
 }
