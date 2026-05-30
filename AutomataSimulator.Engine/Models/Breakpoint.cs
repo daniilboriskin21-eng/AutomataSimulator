@@ -14,9 +14,14 @@ public class Breakpoint
 
     public bool ShouldStop(ExecutionState state)
     {
-        if (!IsEnabled || !state.ActiveConfigurations.Any(c => c.StateId == StateId))
-            return false;
+        if (!IsEnabled) return false;
 
+        // Проверяем, есть ли хотя бы в одной ветви вычислений (конфигурации) состояние с нашим StateId
+        bool isHit = state.ActiveConfigurations.Any(c => c.StateId == StateId);
+
+        if (!isHit) return false;
+
+        // Если есть условный брейкпоинт (лямбда), проверяем его, иначе просто останавливаемся
         return Condition?.Invoke(state) ?? true;
     }
 }

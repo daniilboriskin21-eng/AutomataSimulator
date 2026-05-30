@@ -38,7 +38,6 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
         var startState = _automaton.GetStartState()
             ?? throw new InvalidOperationException("Автомат не имеет начального состояния");
 
-        // --- ЭТОТ БЛОК БЫЛ ПОТЕРЯН ---
         // Инициализируем пустой стек. Если это PDA (с магазинной памятью) 
         // и есть начальный символ стека, добавляем его.
         var initialStack = ImmutableStack<char>.Empty;
@@ -46,7 +45,6 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
         {
             initialStack = initialStack.Push(pda.InitialStackSymbol.Value);
         }
-        // ------------------------------
 
         var initialConfig = new StateConfiguration(startState.Id, initialStack);
 
@@ -123,14 +121,6 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
         CurrentState = initialState;
         RefreshActiveIds();
     }
-    private void CheckBreakpoints()
-    {
-        foreach (var bp in _breakpoints)
-        {
-            if (bp.ShouldStop(CurrentState)) break;
-        }
-    }
-
     private bool HasAvailableEpsilonTransitions()
     {
         // Проверка: можно ли из текущих состояний уйти по эпсилон в новые состояния
@@ -140,9 +130,19 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
 
     public void ToggleBreakpoint(Guid stateId)
     {
+        // Ищем, есть ли уже брейкпоинт на этом состоянии
         var existing = _breakpoints.FirstOrDefault(b => b.StateId == stateId);
-        if (existing != null) _breakpoints.Remove(existing);
-        else _breakpoints.Add(new Breakpoint { StateId = stateId });
+
+        if (existing != null)
+        {
+            // Если есть - удаляем (снимаем точку останова)
+            _breakpoints.Remove(existing);
+        }
+        else
+        {
+            // Если нет - добавляем
+            _breakpoints.Add(new Breakpoint { StateId = stateId, IsEnabled = true });
+        }
     }
 
     public void Run()
@@ -151,9 +151,10 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
         {
             StepForward();
 
-            // Если после шага мы оказались в состоянии с включенным брейкпоинтом - останавливаем цикл Run
+            // После каждого шага проверяем, не попали ли мы на состояние с брейкпоинтом
             if (_breakpoints.Any(bp => bp.ShouldStop(CurrentState)))
             {
+                // Если попали - прерываем цикл выполнения
                 break;
             }
         }

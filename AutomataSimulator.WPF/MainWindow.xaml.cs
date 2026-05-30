@@ -185,13 +185,16 @@ public partial class MainWindow : Window
     {
         if (sender is FrameworkElement fe && fe.Tag is VisualVertex vertex)
         {
+            // Защита: не ставим точки останова на невидимые/фиктивные узлы обхода
+            if (vertex.IsDummy) return;
+
+            // Переключаем визуальное состояние (красный кружок)
             vertex.IsBreakpoint = !vertex.IsBreakpoint;
 
-            // Передаем команду во ViewModel или Engine
+            // Отправляем команду в ядро симуляции
             _vm?.Simulation.ToggleBreakpointCommand?.Execute(vertex.Id);
         }
     }
-
     private void OpenManualConstructor_Click(object sender, RoutedEventArgs e)
     {
         var window = new Windows.ManualConstructorWindow();

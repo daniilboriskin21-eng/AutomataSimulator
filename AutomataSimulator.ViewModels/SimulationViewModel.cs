@@ -12,8 +12,6 @@ public class SimulationViewModel : ViewModelBase
     private ObservableCollection<char> _stackView = new();
     public string? InputErrorMessage { get; private set; }
     public bool HasInputError => !string.IsNullOrEmpty(InputErrorMessage);
-
-    // --- НОВЫЕ СВОЙСТВА ДЛЯ ПРОГРЕССА ---
     public string ProcessedText => _engine != null ? _inputString.Substring(0, _engine.CurrentState.ReadPosition) : "";
     public string RemainingText => _engine != null ? _inputString.Substring(_engine.CurrentState.ReadPosition) : _inputString;
 
@@ -61,6 +59,8 @@ public class SimulationViewModel : ViewModelBase
     public ICommand StepForwardCommand { get; }
     public ICommand StepBackwardCommand { get; }
     public ICommand ResetCommand { get; }
+    public ICommand ToggleBreakpointCommand { get; }
+    public ICommand RunCommand { get; }
 
     public SimulationViewModel()
     {
@@ -83,6 +83,14 @@ public class SimulationViewModel : ViewModelBase
             _engine?.Run();
             UpdateUI();
         }, _ => !HasInputError && (_engine?.CanStepForward ?? false)); // Блокируем при ошибке
+
+        ToggleBreakpointCommand = new RelayCommand(param =>
+        {
+            if (param is Guid stateId)
+            {
+                _engine?.ToggleBreakpoint(stateId);
+            }
+        });
     }
     // --- ИЗМЕНЕН МЕТОД: Теперь принимает строку ---
     public void Initialize(IExecutionEngine engine, string input)
@@ -134,8 +142,6 @@ public class SimulationViewModel : ViewModelBase
         return _engine?.GetActiveStateIds().ToList() ?? new List<Guid>();
     }
 
-    public ICommand ToggleBreakpointCommand { get; }
-    public ICommand RunCommand { get; }
 
     public string StatusText
     {
