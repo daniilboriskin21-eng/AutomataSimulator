@@ -91,9 +91,17 @@ public class MainViewModel : ViewModelBase
         {
             if (CurrentAutomaton is FiniteAutomaton nfa && !nfa.IsDeterministic())
             {
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 var dfa = AutomataSimulator.Core.Operations.NfaToDfaConverter.Convert(nfa);
-                CurrentAutomaton = dfa;
+                sw.Stop();
 
+                System.Windows.MessageBox.Show(
+                    $"Состояний NFA: {nfa.States.Count}\n" +
+                    $"Состояний DFA: {dfa.States.Count}\n" +
+                    $"Время алгоритма подмножеств: {sw.ElapsedMilliseconds} мс",
+                    "Эксперимент 3 (NFA -> DFA)");
+
+                CurrentAutomaton = dfa;
                 var engine = new ExecutionEngine<FiniteAutomaton, FiniteTransition>(dfa, TestInput);
                 Simulation.Initialize(engine, TestInput);
             }

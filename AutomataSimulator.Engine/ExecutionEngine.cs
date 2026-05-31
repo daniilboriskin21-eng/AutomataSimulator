@@ -13,6 +13,9 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
     where TAutomaton : Automaton<TTransition>
     where TTransition : Transition
 {
+    public int StepCount { get; set; }
+    public int MaxConfigurations { get; set; }
+
     private HashSet<Guid> _activeStateIds = new();
     private readonly TAutomaton _automaton;
     private readonly ITransitionStrategy _strategy; // Поле теперь существует
@@ -58,6 +61,8 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
         // На старте не делаем эпсилон-замыкание, просто стоим в первой точке
         CurrentState = initialState;
         RefreshActiveIds();
+        StepCount = 0;
+        MaxConfigurations = CurrentState.ActiveConfigurations.Count;
     }
     public IEnumerable<Guid> GetActiveStateIds() => _activeStateIds;
     private void RefreshActiveIds()
@@ -83,6 +88,12 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
 
         // 4. Применяем замыкание к новым узлам и сохраняем как текущее состояние
         CurrentState = _strategy.ApplyEpsilonClosure(nextState, _automaton.Transitions.Cast<ITransition>());
+
+        StepCount++;
+        if (CurrentState.ActiveConfigurations.Count > MaxConfigurations)
+        {
+            MaxConfigurations = CurrentState.ActiveConfigurations.Count;
+        }
 
         // 5. Обновляем экран
         RefreshActiveIds();
@@ -120,6 +131,8 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
         // СТАЛО: Никакого эпсилон-замыкания. Возвращаемся в 1 точку.
         CurrentState = initialState;
         RefreshActiveIds();
+        StepCount = 0;
+        MaxConfigurations = CurrentState.ActiveConfigurations.Count;
     }
     private bool HasAvailableEpsilonTransitions()
     {
@@ -182,5 +195,11 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
 
             return CurrentState.ActiveConfigurations.Any(c => finalStateIds.Contains(c.StateId));
         }
+    }
+    public bool IsPda => _automaton is PushdownAutomaton;
+        public string GetStateName(Guid id)
+    {
+        var state = _automaton.States.FirstOrDefault(s => s.Id == id);
+        return state?.Name ?? "Unknown";
     }
 }

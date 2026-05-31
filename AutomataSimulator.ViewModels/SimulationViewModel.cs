@@ -4,12 +4,16 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 
 namespace AutomataSimulator.ViewModels;
-
 public class SimulationViewModel : ViewModelBase
 {
     private IExecutionEngine? _engine;
     private string _inputString = string.Empty;
-    private ObservableCollection<char> _stackView = new();
+    private ObservableCollection<ComputationBranch> _branchesView = new();
+    public ObservableCollection<ComputationBranch> BranchesView
+    {
+        get => _branchesView;
+        private set => SetProperty(ref _branchesView, value);
+    }
     public string? InputErrorMessage { get; private set; }
     public bool HasInputError => !string.IsNullOrEmpty(InputErrorMessage);
     public string ProcessedText => _engine != null ? _inputString.Substring(0, _engine.CurrentState.ReadPosition) : "";
@@ -25,11 +29,6 @@ public class SimulationViewModel : ViewModelBase
         set => SetProperty(ref _inputString, value);
     }
 
-    public ObservableCollection<char> StackView
-    {
-        get => _stackView;
-        private set => SetProperty(ref _stackView, value);
-    }
     private void ValidateInput()
     {
         if (_engine == null || string.IsNullOrEmpty(_inputString))
@@ -80,9 +79,19 @@ public class SimulationViewModel : ViewModelBase
         });
 
         RunCommand = new RelayCommand(_ => {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             _engine?.Run();
+            sw.Stop();
+
             UpdateUI();
-        }, _ => !HasInputError && (_engine?.CanStepForward ?? false)); // Блокируем при ошибке
+
+            // Выводим результаты эксперимента на экран!
+            System.Windows.MessageBox.Show(
+                $"Время работы: {sw.ElapsedMilliseconds} мс\n" +
+                $"Кол-во шагов: {_engine?.StepCount}\n" +
+                $"Макс. конфигураций (параллельных ветвей): {_engine?.MaxConfigurations}",
+                "Метрики симуляции");
+        }, _ => !HasInputError && (_engine?.CanStepForward ?? false));
 
         ToggleBreakpointCommand = new RelayCommand(param =>
         {
@@ -114,28 +123,39 @@ public class SimulationViewModel : ViewModelBase
     {
         if (_engine == null) return;
 
-        StackView.Clear();
+        // Очищаем старый список веток
+        BranchesView.Clear();
 
-        // Берем стек из первой активной конфигурации (так как их может быть несколько)
-        var firstConfig = _engine.CurrentState.ActiveConfigurations.FirstOrDefault();
-        if (firstConfig != null)
+        int branchNum = 1;
+        foreach (var config in _engine.CurrentState.ActiveConfigurations)
         {
-            foreach (var symbol in firstConfig.Stack) StackView.Add(symbol);
+            string stateName = _engine.GetStateName(config.StateId);
+
+            // Переводим стек в строку. ImmutableStack при перечислении отдает элементы от вершины ко дну.
+            string stackStr = config.Stack.IsEmpty ? "[Пусто]" : string.Join(" ", config.Stack);
+
+            BranchesView.Add(new ComputationBranch
+            {
+                Title = $"Ветка {branchNum}: Узел {stateName}",
+                StackContent = $"Стек: {stackStr}",
+                ShowStack = _engine.IsPda // Показываем текст стека только для PDA
+            });
+
+            branchNum++;
         }
 
         OnPropertyChanged(nameof(IsActive));
         OnPropertyChanged(nameof(ProcessedText));
         OnPropertyChanged(nameof(RemainingText));
         OnPropertyChanged(nameof(ProgressPercentage));
-        OnPropertyChanged(nameof(StatusText));   // <-- ДОБАВИТЬ ЭТО
-        OnPropertyChanged(nameof(StatusColor));  // <-- ДОБАВИТЬ ЭТО
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(StatusColor));
         OnPropertyChanged("ExecutionUpdated");
 
-        // ОБЯЗАТЕЛЬНО Обновляем все кнопки!
         (StepForwardCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (StepBackwardCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (ResetCommand as RelayCommand)?.RaiseCanExecuteChanged();
-        (RunCommand as RelayCommand)?.RaiseCanExecuteChanged(); // <- Вот почему ЗАПУСК не работал!
+        (RunCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
     public List<Guid> GetActiveStateIds()
     {

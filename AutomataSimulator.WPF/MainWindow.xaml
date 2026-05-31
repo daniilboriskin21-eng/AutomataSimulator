@@ -59,8 +59,6 @@
                 </Grid>
 
                 <!-- 2. СОСТОЯНИЕ: ФИКТИВНЫЙ УЗЕЛ (Для петель и встречных стрелок) -->
-                <!-- Линии будут соединяться ровно с границами этого бордера -->
-                <!-- 2. СОСТОЯНИЕ: ФИКТИВНЫЙ УЗЕЛ (Для петель и встречных стрелок) -->
                 <Border Background="#FDFEFE" BorderBrush="#BDC3C7" BorderThickness="1" CornerRadius="4" Padding="4,2" 
         MaxWidth="200" MaxHeight="120">
                     <!-- ОГРАНИЧИЛИ РАЗМЕР -->
@@ -165,8 +163,38 @@
 
                 <Button Content="СБРОС В НАЧАЛО" Click="Reset_Click" Height="30" Background="#E74C3C" Foreground="White" BorderThickness="0"/>
 
-                <TextBlock Text="Магазин (Стек):" Margin="0,15,0,5" FontWeight="Bold"/>
-                <ListBox ItemsSource="{Binding StackView}" Height="250" Background="#F8F9F9" BorderThickness="0"/>
+                <TextBlock Text="Активные ветви (Параллельно):" Margin="0,15,0,5" FontWeight="Bold"/>
+                <ScrollViewer Height="250" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding BranchesView}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#F8F9F9" BorderBrush="#D5DBDB" BorderThickness="1" CornerRadius="6" Margin="0,0,0,5" Padding="8">
+                                    <StackPanel>
+                                        <!-- Название ветки и текущее состояние -->
+                                        <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="#2980B9"/>
+
+                                        <!-- Содержимое стека (прячется, если это DFA/NFA) -->
+                                        <TextBlock Text="{Binding StackContent}" 
+                                   FontFamily="Consolas" 
+                                   FontSize="14" 
+                                   Margin="0,4,0,0">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ShowStack}" Value="False">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
             </StackPanel>
         </Border>
     </Grid>

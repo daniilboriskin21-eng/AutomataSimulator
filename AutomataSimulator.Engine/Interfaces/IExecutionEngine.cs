@@ -4,6 +4,9 @@ namespace AutomataSimulator.Engine.Interfaces;
 
 public interface IExecutionEngine
 {
+    public int StepCount { get; set; }
+    public int MaxConfigurations { get; set; }
+
     ExecutionState CurrentState { get; }
     bool CanStepForward { get; }
     bool CanStepBackward { get; }
@@ -21,4 +24,6 @@ public interface IExecutionEngine
     void SetInput(string input);
     bool IsAccepted { get; }
     HashSet<char> Alphabet { get; }
+    bool IsPda { get; }
+    string GetStateName(Guid id);
 }
