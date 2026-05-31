@@ -32,7 +32,7 @@ public class PushdownTransitionStrategy : ITransitionStrategy
             }
         }
 
-        if (nextConfigs.Count == 0) return current with { RemainingInput = "" };
+        if (nextConfigs.Count == 0) return current with { ActiveConfigurations = ImmutableHashSet<StateConfiguration>.Empty };
 
         return current with
         {

@@ -21,7 +21,7 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
     private readonly Stack<ExecutionState> _history = new();
     public HashSet<char> Alphabet => _automaton.Alphabet;
     public ExecutionState CurrentState { get; private set; }
-    public bool CanStepForward => !CurrentState.IsTerminal || HasAvailableEpsilonTransitions();
+    public bool CanStepForward => CurrentState.ActiveConfigurations.Any() && (!CurrentState.IsTerminal || HasAvailableEpsilonTransitions());
     public bool CanStepBackward => _history.Count > 0;
 
     public ExecutionEngine(TAutomaton automaton, string input)
@@ -168,13 +168,18 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
     {
         get
         {
-            // 1. Строка должна быть полностью прочитана (IsTerminal == true)
-            if (!CurrentState.IsTerminal) return false;
+            // 1. Строка должна быть прочитана полностью И должна остаться хоть одна живая ветка
+            if (!CurrentState.IsTerminal || !CurrentState.ActiveConfigurations.Any()) return false;
 
-            // 2. Получаем ID всех финальных состояний автомата
             var finalStateIds = _automaton.GetFinalStates().Select(s => s.Id).ToHashSet();
 
-            // 3. Если хотя бы одна активная конфигурация находится в финальном состоянии - Успех!
+            if (_automaton is PushdownAutomaton)
+            {
+                // Для PDA добавляем жесткое условие: Финальное состояние + ПУСТОЙ СТЕК
+                return CurrentState.ActiveConfigurations.Any(c =>
+                    finalStateIds.Contains(c.StateId) && c.Stack.IsEmpty);
+            }
+
             return CurrentState.ActiveConfigurations.Any(c => finalStateIds.Contains(c.StateId));
         }
     }

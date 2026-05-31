@@ -26,7 +26,7 @@ public class FiniteTransitionStrategy : ITransitionStrategy
             foreach (var r in reachable) nextConfigs.Add(r);
         }
 
-        if (nextConfigs.Count == 0) return current with { RemainingInput = "" };
+        if (nextConfigs.Count == 0) return current with { ActiveConfigurations = ImmutableHashSet<StateConfiguration>.Empty };
 
         return current with
         {
