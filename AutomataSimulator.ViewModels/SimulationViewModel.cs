@@ -2,10 +2,18 @@
 using AutomataSimulator.ViewModels.Base;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using System.Threading.Tasks;
 
 namespace AutomataSimulator.ViewModels;
 public class SimulationViewModel : ViewModelBase
 {
+    private bool _isRunning;
+    public bool IsRunning
+    {
+        get => _isRunning;
+        set => SetProperty(ref _isRunning, value);
+    }
+
     private IExecutionEngine? _engine;
     private string _inputString = string.Empty;
     private ObservableCollection<ComputationBranch> _branchesView = new();
@@ -16,9 +24,25 @@ public class SimulationViewModel : ViewModelBase
     }
     public string? InputErrorMessage { get; private set; }
     public bool HasInputError => !string.IsNullOrEmpty(InputErrorMessage);
-    public string ProcessedText => _engine != null ? _inputString.Substring(0, _engine.CurrentState.ReadPosition) : "";
-    public string RemainingText => _engine != null ? _inputString.Substring(_engine.CurrentState.ReadPosition) : _inputString;
+    public string ProcessedText
+    {
+        get
+        {
+            if (_engine == null || _engine.CurrentState.ReadPosition == 0) return "";
+            var text = _engine.CurrentState.FullInput.Substring(0, _engine.CurrentState.ReadPosition);
+            return text.Length > 20 ? "..." + text.Substring(text.Length - 20) : text;
+        }
+    }
 
+    public string RemainingText
+    {
+        get
+        {
+            if (_engine == null) return _inputString;
+            var text = _engine.CurrentState.FullInput.Substring(_engine.CurrentState.ReadPosition);
+            return text.Length > 20 ? text.Substring(0, 20) + "..." : text;
+        }
+    }
     public double ProgressPercentage => (_engine == null || _inputString.Length == 0)
         ? 0
         : (_engine.CurrentState.ReadPosition / (double)_inputString.Length) * 100;
@@ -66,7 +90,7 @@ public class SimulationViewModel : ViewModelBase
         StepForwardCommand = new RelayCommand(_ => {
             _engine?.StepForward();
             UpdateUI();
-        }, _ => !HasInputError && (_engine?.CanStepForward ?? false)); // Блокируем при ошибке
+        }, _ => !IsRunning && !HasInputError && (_engine?.CanStepForward ?? false));
 
         StepBackwardCommand = new RelayCommand(_ => {
             _engine?.StepBackward();
@@ -78,20 +102,43 @@ public class SimulationViewModel : ViewModelBase
             UpdateUI();
         });
 
-        RunCommand = new RelayCommand(_ => {
+        RunCommand = new RelayCommand(async _ =>
+        {
+            IsRunning = true;
+            UpdateUI(); 
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            _engine?.Run();
-            sw.Stop();
 
-            UpdateUI();
+            try
+            {
+                await Task.Run(() =>
+                {
+                    _engine?.Run();
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    System.Windows.MessageBox.Show($"Произошла ошибка при вычислении:\n{ex.Message}", "Ошибка");
+                });
+            }
+            finally
+            {
+                sw.Stop();
 
-            // Выводим результаты эксперимента на экран!
-            System.Windows.MessageBox.Show(
-                $"Время работы: {sw.ElapsedMilliseconds} мс\n" +
-                $"Кол-во шагов: {_engine?.StepCount}\n" +
-                $"Макс. конфигураций (параллельных ветвей): {_engine?.MaxConfigurations}",
-                "Метрики симуляции");
-        }, _ => !HasInputError && (_engine?.CanStepForward ?? false));
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    IsRunning = false;
+                    UpdateUI();
+
+                    System.Windows.MessageBox.Show(
+                        $"Время работы: {sw.ElapsedMilliseconds} мс\n" +
+                        $"Кол-во шагов: {_engine?.StepCount}\n" +
+                        $"Макс. конфигураций (параллельных ветвей): {_engine?.MaxConfigurations}",
+                        "Метрики симуляции");
+                });
+            }
+        }, _ => !IsRunning && !HasInputError && (_engine?.CanStepForward ?? false));
 
         ToggleBreakpointCommand = new RelayCommand(param =>
         {
@@ -101,7 +148,6 @@ public class SimulationViewModel : ViewModelBase
             }
         });
     }
-    // --- ИЗМЕНЕН МЕТОД: Теперь принимает строку ---
     public void Initialize(IExecutionEngine engine, string input)
     {
         _engine = engine;
@@ -110,7 +156,6 @@ public class SimulationViewModel : ViewModelBase
         UpdateUI();
     }
 
-    // --- НОВЫЙ МЕТОД: Для смены строки без пересоздания графа ---
     public void ChangeInput(string newInput)
     {
         _inputString = newInput;

@@ -15,6 +15,7 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
 {
     public int StepCount { get; set; }
     public int MaxConfigurations { get; set; }
+    private readonly List<ITransition> _transitionsCache;
 
     private HashSet<Guid> _activeStateIds = new();
     private readonly TAutomaton _automaton;
@@ -41,8 +42,6 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
         var startState = _automaton.GetStartState()
             ?? throw new InvalidOperationException("Автомат не имеет начального состояния");
 
-        // Инициализируем пустой стек. Если это PDA (с магазинной памятью) 
-        // и есть начальный символ стека, добавляем его.
         var initialStack = ImmutableStack<char>.Empty;
         if (_automaton is PushdownAutomaton pda && pda.InitialStackSymbol.HasValue)
         {
@@ -54,57 +53,27 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
         var initialState = new ExecutionState
         {
             ActiveConfigurations = ImmutableHashSet.Create(initialConfig),
-            RemainingInput = input, // В методе Reset тут будет _fullInput
+            FullInput = input,
             ReadPosition = 0
         };
 
-        // На старте не делаем эпсилон-замыкание, просто стоим в первой точке
         CurrentState = initialState;
         RefreshActiveIds();
         StepCount = 0;
         MaxConfigurations = CurrentState.ActiveConfigurations.Count;
+        _transitionsCache = _automaton.Transitions.Cast<ITransition>().ToList();
     }
     public IEnumerable<Guid> GetActiveStateIds() => _activeStateIds;
     private void RefreshActiveIds()
     {
-        // Собираем все уникальные ID состояний из всех активных конфигураций
         _activeStateIds = CurrentState.ActiveConfigurations.Select(c => c.StateId).ToHashSet();
     }
 
-    public void StepForward()
-    {
-        if (!CanStepForward) return;
-
-        // 1. Делаем "фотографию" текущего графа и кладем в стек.
-        // Если ExecutionState это record, он запомнит ровно ту картину, что сейчас на экране.
-        _history.Push(CurrentState);
-
-        // 2. Внутренне применяем эпсилон-замыкание к тому, где мы сейчас стоим, 
-        // чтобы автомат "увидел" все доступные пути перед чтением символа
-        var closedCurrent = _strategy.ApplyEpsilonClosure(CurrentState, _automaton.Transitions.Cast<ITransition>());
-
-        // 3. Делаем шаг по символу
-        var nextState = _strategy.NextStep(closedCurrent, _automaton.Transitions.Cast<ITransition>());
-
-        // 4. Применяем замыкание к новым узлам и сохраняем как текущее состояние
-        CurrentState = _strategy.ApplyEpsilonClosure(nextState, _automaton.Transitions.Cast<ITransition>());
-
-        StepCount++;
-        if (CurrentState.ActiveConfigurations.Count > MaxConfigurations)
-        {
-            MaxConfigurations = CurrentState.ActiveConfigurations.Count;
-        }
-
-        // 5. Обновляем экран
-        RefreshActiveIds();
-    }
 
     public void StepBackward()
     {
         if (CanStepBackward)
         {
-            // Просто достаем последнее состояние. 
-            // Если это record, оно сохранилось именно таким, каким было.
             CurrentState = _history.Pop();
             RefreshActiveIds();
         }
@@ -124,11 +93,10 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
         var initialState = new ExecutionState
         {
             ActiveConfigurations = ImmutableHashSet.Create(initialConfig),
-            RemainingInput = _fullInput, // В методе Reset тут будет _fullInput
+            FullInput = _fullInput,
             ReadPosition = 0
         };
 
-        // СТАЛО: Никакого эпсилон-замыкания. Возвращаемся в 1 точку.
         CurrentState = initialState;
         RefreshActiveIds();
         StepCount = 0;
@@ -143,34 +111,46 @@ public class ExecutionEngine<TAutomaton, TTransition> : IExecutionEngine
 
     public void ToggleBreakpoint(Guid stateId)
     {
-        // Ищем, есть ли уже брейкпоинт на этом состоянии
         var existing = _breakpoints.FirstOrDefault(b => b.StateId == stateId);
 
         if (existing != null)
         {
-            // Если есть - удаляем (снимаем точку останова)
             _breakpoints.Remove(existing);
         }
         else
         {
-            // Если нет - добавляем
             _breakpoints.Add(new Breakpoint { StateId = stateId, IsEnabled = true });
         }
     }
+    private void DoStepLogic()
+    {
+        var closedCurrent = _strategy.ApplyEpsilonClosure(CurrentState, _transitionsCache);
+        var nextState = _strategy.NextStep(closedCurrent, _transitionsCache);
+        CurrentState = _strategy.ApplyEpsilonClosure(nextState, _transitionsCache);
 
+        StepCount++;
+        if (CurrentState.ActiveConfigurations.Count > MaxConfigurations)
+        {
+            MaxConfigurations = CurrentState.ActiveConfigurations.Count;
+        }
+    }
+    public void StepForward()
+    {
+        if (!CanStepForward) return;
+
+        _history.Push(CurrentState); // Сохраняем историю только при ручном шаге!
+        DoStepLogic();
+        RefreshActiveIds();
+    }
     public void Run()
     {
         while (CanStepForward)
         {
-            StepForward();
+            if (_breakpoints.Any(bp => bp.ShouldStop(CurrentState))) break;
 
-            // После каждого шага проверяем, не попали ли мы на состояние с брейкпоинтом
-            if (_breakpoints.Any(bp => bp.ShouldStop(CurrentState)))
-            {
-                // Если попали - прерываем цикл выполнения
-                break;
-            }
+            DoStepLogic(); // Вызываем логику без сохранения в историю!
         }
+        RefreshActiveIds();
     }
     public void SetInput(string input)
     {

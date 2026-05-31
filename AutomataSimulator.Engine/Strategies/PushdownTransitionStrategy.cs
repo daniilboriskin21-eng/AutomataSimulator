@@ -10,8 +10,9 @@ public class PushdownTransitionStrategy : ITransitionStrategy
 {
     public ExecutionState NextStep(ExecutionState current, IEnumerable<ITransition> transitions)
     {
-        if (string.IsNullOrEmpty(current.RemainingInput)) return current;
-        char input = current.RemainingInput[0];
+        if (current.IsTerminal) return current;
+
+        char input = current.FullInput[current.ReadPosition];
         var pdaTransitions = transitions.Cast<PushdownTransition>().ToList();
 
         var nextConfigs = new HashSet<StateConfiguration>();
@@ -37,12 +38,10 @@ public class PushdownTransitionStrategy : ITransitionStrategy
         return current with
         {
             ActiveConfigurations = nextConfigs.ToImmutableHashSet(),
-            RemainingInput = current.RemainingInput[1..],
             ReadPosition = current.ReadPosition + 1,
             IsEpsilonStep = false
         };
     }
-
     public ExecutionState ApplyEpsilonClosure(ExecutionState current, IEnumerable<ITransition> transitions)
     {
         var pdaTransitions = transitions.Cast<PushdownTransition>().ToList();

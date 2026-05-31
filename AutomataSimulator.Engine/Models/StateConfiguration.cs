@@ -11,5 +11,17 @@ public record StateConfiguration(Guid StateId, IImmutableStack<char> Stack)
         if (StateId != other.StateId) return false;
         return Stack.SequenceEqual(other.Stack);
     }
-    public override int GetHashCode() => HashCode.Combine(StateId, string.Join("", Stack));
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(StateId);
+
+        // Быстро хэшируем элементы стека без создания строк
+        foreach (var item in Stack)
+        {
+            hash.Add(item);
+        }
+
+        return hash.ToHashCode();
+    }
 }

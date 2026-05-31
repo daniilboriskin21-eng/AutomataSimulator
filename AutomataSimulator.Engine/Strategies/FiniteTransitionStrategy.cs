@@ -10,9 +10,10 @@ public class FiniteTransitionStrategy : ITransitionStrategy
 {
     public ExecutionState NextStep(ExecutionState current, IEnumerable<ITransition> transitions)
     {
-        if (string.IsNullOrEmpty(current.RemainingInput)) return current;
+        if (current.IsTerminal) return current;
 
-        char inputSymbol = current.RemainingInput[0];
+        // Берем символ по индексу (ОЧЕНЬ БЫСТРО, 0 памяти)
+        char inputSymbol = current.FullInput[current.ReadPosition];
         var finiteTransitions = transitions.Cast<FiniteTransition>();
 
         var nextConfigs = new HashSet<StateConfiguration>();
@@ -28,15 +29,14 @@ public class FiniteTransitionStrategy : ITransitionStrategy
 
         if (nextConfigs.Count == 0) return current with { ActiveConfigurations = ImmutableHashSet<StateConfiguration>.Empty };
 
+        // Увеличиваем индекс, строку не трогаем!
         return current with
         {
             ActiveConfigurations = nextConfigs.ToImmutableHashSet(),
-            RemainingInput = current.RemainingInput[1..],
             ReadPosition = current.ReadPosition + 1,
             IsEpsilonStep = false
         };
     }
-
     public ExecutionState ApplyEpsilonClosure(ExecutionState current, IEnumerable<ITransition> transitions)
     {
         var finiteTransitions = transitions.Cast<FiniteTransition>().ToList();
